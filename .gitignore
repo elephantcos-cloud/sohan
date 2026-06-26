@@ -1,0 +1,20 @@
+# Build outputs
+/build
+/app/build
+/sohan-client/build
+
+# Gradle
+.gradle
+*.gradle.kts.bak
+local.properties
+gradle-wrapper.jar
+
+# Android Studio
+.idea
+*.iml
+.DS_Store
+
+# Keystore — NEVER commit this
+*.jks
+*.keystore
+sohan-release.jks

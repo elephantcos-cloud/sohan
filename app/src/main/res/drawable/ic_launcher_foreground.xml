@@ -1,0 +1,39 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+  <!-- Wifi signal arcs -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="4"
+      android:strokeLineCap="round"
+      android:pathData="M54,38 A22,22 0 0,1 76,60" />
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="4"
+      android:strokeLineCap="round"
+      android:pathData="M54,28 A32,32 0 0,1 86,60" />
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="4"
+      android:strokeLineCap="round"
+      android:pathData="M54,48 A12,12 0 0,1 66,60" />
+
+  <!-- Terminal prompt ">" -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M28,62 L38,70 L28,78 L24,74 L30,70 L24,66 Z" />
+
+  <!-- Terminal underline cursor -->
+  <rect
+      android:x="40"
+      android:y="74"
+      android:width="22"
+      android:height="4"
+      android:fillColor="#FFFFFF" />
+</vector>

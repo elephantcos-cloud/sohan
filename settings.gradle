@@ -1,0 +1,10 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+rootProject.name = "Sohan"
+include ':app'
+include ':sohan-client'   // Client SDK — other apps can copy this module

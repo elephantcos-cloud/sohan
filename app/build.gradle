@@ -1,0 +1,93 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace 'com.shohan.sohan'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.shohan.sohan"
+        minSdk 30
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        vectorDrawables { useSupportLibrary true }
+    }
+
+    buildFeatures {
+        compose true
+        buildConfig true
+        aidl true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.3'
+    }
+
+    // ── Signing config ────────────────────────────────────────────────────────
+    // In GitHub Actions, these come from environment variables set by the workflow.
+    // Locally, create a keystore and set these in local.properties or environment.
+    signingConfigs {
+        release {
+            def keystorePath = System.getenv("KEYSTORE_PATH") ?: ""
+            def keystorePass = System.getenv("KEYSTORE_PASSWORD") ?: ""
+            def keyAlias     = System.getenv("KEY_ALIAS") ?: ""
+            def keyPass      = System.getenv("KEY_PASSWORD") ?: ""
+
+            if (keystorePath && keystorePass && keyAlias && keyPass) {
+                storeFile     file(keystorePath)
+                storePassword keystorePass
+                keyAlias      keyAlias
+                keyPassword   keyPass
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Use release signing if env vars are present, otherwise unsigned
+            if (System.getenv("KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions { jvmTarget = '17' }
+
+    packagingOptions {
+        resources { excludes += ['/META-INF/{AL2.0,LGPL2.1}'] }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0'
+    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation platform('androidx.compose:compose-bom:2023.10.01')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.compose.material:material-icons-extended'
+    implementation 'androidx.navigation:navigation-compose:2.7.6'
+    implementation 'androidx.datastore:datastore-preferences:1.0.0'
+
+    // ADB over TCP
+    implementation 'com.github.mobile-dev-inc:dadb:1.2.7'
+
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+}
