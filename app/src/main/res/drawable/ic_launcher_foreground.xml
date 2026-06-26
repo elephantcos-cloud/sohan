@@ -29,11 +29,9 @@
       android:fillColor="#FFFFFF"
       android:pathData="M28,62 L38,70 L28,78 L24,74 L30,70 L24,66 Z" />
 
-  <!-- Terminal underline cursor -->
-  <rect
-      android:x="40"
-      android:y="74"
-      android:width="22"
-      android:height="4"
-      android:fillColor="#FFFFFF" />
+  <!-- Terminal underline cursor (rect converted to path: x=40,y=74,w=22,h=4) -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M40,74 L62,74 L62,78 L40,78 Z" />
+
 </vector>
