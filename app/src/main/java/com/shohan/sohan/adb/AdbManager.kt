@@ -31,10 +31,9 @@ object AdbManager {
                 dadb?.close()
                 dadb = null
 
-                val keyPair = loadOrCreate(keyDir)
-
                 // Try with key pair first, fall back to no-key for older ADB
                 val connection = try {
+                    val keyPair = loadOrCreate(keyDir)
                     Dadb.create(host, port, keyPair)
                 } catch (_: Exception) {
                     Dadb.create(host, port)
@@ -87,13 +86,12 @@ object AdbManager {
         keyDir.mkdirs()
         val priv = File(keyDir, "sohan_adb_key")
         val pub  = File(keyDir, "sohan_adb_key.pub")
-        return if (priv.exists() && pub.exists()) {
-            AdbKeyPair.read(priv, pub)
-        } else {
-            AdbKeyPair.generate().also {
-                it.savePrivateKey(priv)
-                it.savePublicKey(pub)
-            }
+            val kg = java.security.KeyPairGenerator.getInstance("RSA")
+            kg.initialize(2048)
+            val kp = kg.generateKeyPair()
+            priv.writeBytes(kp.private.encoded)
+            pub.writeBytes(kp.public.encoded)
         }
+        return AdbKeyPair.read(priv, pub)
     }
 }

@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.os.Process
 import android.os.RemoteException
 import com.shohan.sohan.ISohanService
+import com.shohan.sohan.R
 import com.shohan.sohan.MainActivity
 import com.shohan.sohan.adb.AdbManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -182,7 +183,7 @@ class SohanService : Service() {
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle("Sohan")
             .setContentText(statusText)
-            .setSmallIcon(android.R.drawable.stat_sys_data_usb)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(openPi)
             .addAction(Notification.Action.Builder(null, "Stop", stopPi).build())
             .setOngoing(true)
