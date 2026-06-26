@@ -87,7 +87,7 @@ dependencies {
     implementation 'androidx.datastore:datastore-preferences:1.0.0'
 
     // ADB over TCP
-    implementation 'com.github.mobile-dev-inc:dadb:1.2.7'
+    implementation 'com.github.mobile-dev-inc:dadb:1.2.6'
 
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }
