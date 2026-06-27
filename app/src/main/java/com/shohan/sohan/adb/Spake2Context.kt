@@ -1,6 +1,6 @@
 package com.shohan.sohan.adb
 
-import org.bouncycastle.asn1.x9.ECNamedCurveTable
+import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.math.ec.ECPoint
 import java.math.BigInteger
 import java.security.MessageDigest
