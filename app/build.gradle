@@ -75,7 +75,9 @@ android {
                 '/META-INF/LICENSE-notice.md',
                 '/META-INF/NOTICE.md',
                 '/META-INF/NOTICE',
-                '/META-INF/LICENSE'
+                '/META-INF/LICENSE',
+                '/META-INF/BCKEY.DSA',
+                '/META-INF/BCKEY.SF'
             ]
         }
     }
@@ -98,6 +100,7 @@ dependencies {
 
     // ADB over TCP
     implementation 'dev.mobile:dadb:1.2.7'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 
     debugImplementation 'androidx.compose.ui:ui-tooling'
 }
