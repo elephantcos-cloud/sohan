@@ -110,7 +110,7 @@ class AdbPairingService : Service() {
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("\uD83D\uDD17 Wireless Debugging ready to pair")
-            .setContentText("Enter the 6-digit code (port \${port})")
+            .setContentText("Enter the 6-digit code (port "+port+")")
             .addAction(act).setOngoing(true)
             .setColor(0xFF2979FF.toInt()).setColorized(true).build()
     }

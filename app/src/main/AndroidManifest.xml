@@ -55,6 +55,11 @@
             </intent-filter>
         </service>
 
+
+        <service
+            android:name=".adb.AdbPairingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
     </application>
 
 </manifest>
