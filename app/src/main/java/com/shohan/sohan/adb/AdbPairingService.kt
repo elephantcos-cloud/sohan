@@ -4,133 +4,102 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.RemoteInput
 import android.app.Service
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.os.Build
 import android.os.IBinder
+import androidx.annotation.RequiresApi
+import androidx.lifecycle.Observer
 import com.shohan.sohan.MainActivity
 import com.shohan.sohan.R
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 
+/**
+ * Foreground service that watches for Wireless Debugging via mDNS.
+ *
+ * Uses AdbMdns to listen for _adb-tls-connect._tcp (the regular connect port).
+ * When the port appears → shows "Wireless Debugging is ON — tap to connect".
+ * Tapping opens MainActivity which auto-connects via AutoConnectHelper.
+ *
+ * For one-time pairing: user just taps "Allow" on the system dialog that
+ * appears on the first ADB connection — no pairing code needed for self-connect.
+ */
+@RequiresApi(Build.VERSION_CODES.R)
 class AdbPairingService : Service() {
+
     companion object {
-        private const val CHANNEL_ID  = "sohan_pairing"
-        private const val NOTIF_WAIT  = 3001
-        private const val NOTIF_READY = 3002
-        private const val NOTIF_BUSY  = 3003
-        const val ACTION_SUBMIT = "com.shohan.sohan.ACTION_SUBMIT_PAIR_CODE"
-        const val RI_KEY        = "pair_code_input"
+        private const val CHANNEL_ID = "sohan_watcher"
+        private const val NOTIF_ID   = 3001
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO)
-    private var watchJob: Job? = null
-    private var curHost: String? = null
-    private var curPort: Int     = 0
+    private var mdns: AdbMdns? = null
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(ctx: Context, intent: Intent) {
-            if (intent.action != ACTION_SUBMIT) return
-            val code = RemoteInput.getResultsFromIntent(intent)
-                ?.getCharSequence(RI_KEY)?.toString()?.trim() ?: return
-            val h = curHost ?: return
-            val p = curPort.takeIf { it > 0 } ?: return
-            doPair(h, p, code)
+    private val portObserver = Observer<Int> { port ->
+        if (port != null && port > 0) {
+            notifyReady(port)
+        } else {
+            notifyWaiting()
         }
     }
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        startForeground(NOTIF_WAIT, waitingNotif())
-        registerReceiver(receiver, IntentFilter(ACTION_SUBMIT), RECEIVER_NOT_EXPORTED)
-        watchJob = AdbMdns.pairingServiceFlow(this).onEach { info ->
-            if (info == null) {
-                curHost = null; curPort = 0
-                nm().cancel(NOTIF_READY)
-                nm().notify(NOTIF_WAIT, waitingNotif())
-            } else {
-                curHost = info.host; curPort = info.port
-                nm().cancel(NOTIF_WAIT)
-                nm().notify(NOTIF_READY, readyNotif(info.port))
-            }
-        }.launchIn(scope)
+        startForeground(NOTIF_ID, buildWaiting())
+
+        mdns = AdbMdns(this, AdbMdns.TLS_CONNECT, portObserver).also { it.start() }
     }
 
-    override fun onStartCommand(i: Intent?, f: Int, s: Int) = START_STICKY
-    override fun onDestroy() { super.onDestroy(); unregisterReceiver(receiver); watchJob?.cancel() }
-    override fun onBind(i: Intent?): IBinder? = null
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_STICKY
 
-    private fun doPair(host: String, port: Int, code: String) {
-        nm().cancel(NOTIF_READY)
-        nm().notify(NOTIF_BUSY, pairingNotif())
-        scope.launch {
-            try {
-                AdbPairingClient(host, port, code, applicationContext).pair()
-                nm().cancel(NOTIF_BUSY)
-                nm().notify(NOTIF_BUSY, successNotif())
-                nm().notify(NOTIF_WAIT, waitingNotif())
-            } catch (e: AdbPairingClient.InvalidPairCodeException) {
-                nm().cancel(NOTIF_BUSY)
-                nm().notify(NOTIF_BUSY, errorNotif("Wrong code — try again"))
-                nm().notify(NOTIF_READY, readyNotif(port))
-            } catch (e: Exception) {
-                nm().cancel(NOTIF_BUSY)
-                nm().notify(NOTIF_BUSY, errorNotif(e.message ?: "Pairing failed"))
-            }
-        }
+    override fun onDestroy() {
+        super.onDestroy()
+        mdns?.stop()
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    // ── Notifications ─────────────────────────────────────────────────────────
 
     private fun createChannel() {
-        nm().createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "ADB Pairing", NotificationManager.IMPORTANCE_HIGH)
-                .apply { setShowBadge(false) }
-        )
+        val ch = NotificationChannel(
+            CHANNEL_ID, "Wireless ADB Watcher", NotificationManager.IMPORTANCE_LOW
+        ).apply { setShowBadge(false); setSound(null, null) }
+        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
-    private fun waitingNotif() = Notification.Builder(this, CHANNEL_ID)
+    private fun openAppIntent() = PendingIntent.getActivity(
+        this, 0,
+        Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+    )
+
+    private fun buildWaiting() = Notification.Builder(this, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_notification)
-        .setContentTitle("Sohan — Waiting for pairing")
-        .setContentText("Developer Options → Wireless Debugging → Pair device with pairing code")
-        .setOngoing(true).build()
+        .setContentTitle("Sohan — Waiting")
+        .setContentText("Enable Wireless Debugging in Developer Options")
+        .setContentIntent(openAppIntent())
+        .setOngoing(true)
+        .build()
 
-    private fun readyNotif(port: Int): Notification {
-        val ri  = RemoteInput.Builder(RI_KEY).setLabel("6-digit pairing code").build()
-        val pi  = PendingIntent.getBroadcast(this, 0,
-            Intent(ACTION_SUBMIT).setPackage(packageName),
-            PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val act = Notification.Action.Builder(null, "Pair now", pi).addRemoteInput(ri).build()
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("\uD83D\uDD17 Wireless Debugging ready to pair")
-            .setContentText("Enter the 6-digit code (port "+port+")")
-            .addAction(act).setOngoing(true)
-            .setColor(0xFF2979FF.toInt()).setColorized(true).build()
+    private fun buildReady(port: Int) = Notification.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle("Wireless Debugging is ON")
+        .setContentText("Tap to connect Sohan (port $port)")
+        .setContentIntent(openAppIntent())
+        .addAction(
+            Notification.Action.Builder(null, "⚡ Connect Now", openAppIntent()).build()
+        )
+        .setColor(0xFF00C853.toInt()).setColorized(true)
+        .setOngoing(true)
+        .build()
+
+    private fun notifyWaiting() {
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIF_ID, buildWaiting())
     }
 
-    private fun pairingNotif() = Notification.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_notification).setContentTitle("Pairing\u2026")
-        .setProgress(0,0,true).setOngoing(true).build()
-
-    private fun successNotif(): Notification {
-        val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        return Notification.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("\u2705 Pairing successful!")
-            .setContentText("Sohan will now auto-connect. Tap to open.")
-            .setContentIntent(pi).setAutoCancel(true)
-            .setColor(0xFF00C853.toInt()).setColorized(true).build()
+    private fun notifyReady(port: Int) {
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIF_ID, buildReady(port))
     }
-
-    private fun errorNotif(msg: String) = Notification.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_notification).setContentTitle("\u274C Pairing failed")
-        .setContentText(msg).setAutoCancel(true).build()
-
-    private fun nm() = getSystemService(NotificationManager::class.java)
 }
