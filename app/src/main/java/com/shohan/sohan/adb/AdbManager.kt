@@ -7,23 +7,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import java.security.KeyPairGenerator
 
-/**
- * Singleton owning the single ADB TCP connection for the whole app.
- *
- * Connection flow:
- *  1. App generates an RSA key pair on first launch (stored in filesDir).
- *  2. [connect] opens a TCP connection to the device's Wireless ADB daemon.
- *  3. Android shows "Allow ADB debugging?" — user taps Allow.
- *  4. All [shell] calls run with shell-user permissions.
- */
 object AdbManager {
 
     private var dadb: Dadb? = null
 
     val isConnected: Boolean get() = dadb != null
-
-    // ── Connect / disconnect ──────────────────────────────────────────────────
 
     suspend fun connect(host: String, port: Int, keyDir: File): Result<Unit> =
         withContext(Dispatchers.IO) {
@@ -31,7 +21,6 @@ object AdbManager {
                 dadb?.close()
                 dadb = null
 
-                // Try with key pair first, fall back to no-key for older ADB
                 val connection = try {
                     val keyPair = loadOrCreate(keyDir)
                     Dadb.create(host, port, keyPair)
@@ -39,7 +28,6 @@ object AdbManager {
                     Dadb.create(host, port)
                 }
 
-                // Smoke test
                 val probe = connection.shell("echo sohan_ok")
                 if (!probe.output.contains("sohan_ok")) {
                     connection.close()
@@ -64,8 +52,6 @@ object AdbManager {
         dadb = null
     }
 
-    // ── Shell execution ───────────────────────────────────────────────────────
-
     suspend fun shell(command: String): Result<String> =
         withContext(Dispatchers.IO) {
             val conn = dadb
@@ -74,19 +60,17 @@ object AdbManager {
                 val response = conn.shell(command)
                 Result.success(response.output)
             } catch (e: Exception) {
-                // Session died
                 dadb = null
-                Result.failure(Exception("Shell failed: ${e.message}"))
+                Result.failure(Exception("Shell failed: \${e.message}"))
             }
         }
-
-    // ── Key pair ──────────────────────────────────────────────────────────────
 
     private fun loadOrCreate(keyDir: File): AdbKeyPair {
         keyDir.mkdirs()
         val priv = File(keyDir, "sohan_adb_key")
-        val pub  = File(keyDir, "sohan_adb_key.pub")
-            val kg = java.security.KeyPairGenerator.getInstance("RSA")
+        val pub = File(keyDir, "sohan_adb_key.pub")
+        if (!priv.exists() || !pub.exists()) {
+            val kg = KeyPairGenerator.getInstance("RSA")
             kg.initialize(2048)
             val kp = kg.generateKeyPair()
             priv.writeBytes(kp.private.encoded)
