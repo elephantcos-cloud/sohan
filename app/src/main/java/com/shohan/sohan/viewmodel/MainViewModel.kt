@@ -161,7 +161,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun connectInternal(host: String, port: Int): Boolean {
-        val result = AdbManager.connect(host, port, getApplication<Application>().filesDir)
+        val result = AdbManager.connect(host, port, getApplication<Application>())
         return if (result.isSuccess) {
             _connectionState.value = ConnectionState.Connected(host, port)
             connectionPref.save(host, port)
