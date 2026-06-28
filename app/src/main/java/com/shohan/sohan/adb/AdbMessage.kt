@@ -31,7 +31,7 @@ class AdbMessage(
         fun crc32(data: ByteArray?): Int {
             if (data == null) return 0
             var res = 0
-            for (b in data) res += if (b >= 0) b else b + 256
+            for (b in data) res += b.toInt() and 0xFF
             return res
         }
     }
